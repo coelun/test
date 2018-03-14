@@ -14,7 +14,8 @@ zaif = ZaifPublicApi()
 
 false = False
 debug = True
-money = 10000.0
+
+money = 10000
 
 os.system('clear')
 
@@ -29,6 +30,7 @@ depth_btc_jpy={"asks": [[991035.0, 0.3099], [991200.0, 0.01], [991460.0, 0.03], 
 ticker_btc_jpy={"last": 991010.0, "high": 1020000.0, "low": 960010.0, "vwap": 987768.2294, "volume": 14869.6504, "bid": 990520.0, "ask": 991010.0}
 ticker_xem_jpy={"last": 49.1499, "high": 51.6689, "low": 43.2999, "vwap": 46.8248, "volume": 82224058.5, "bid": 49.02, "ask": 49.1499}
 ticker_xem_btc={"last": 4.957e-05, "high": 5.2e-05, "low": 4.354e-05, "vwap": 0.0, "volume": 3919203.0, "bid": 4.957e-05, "ask": 4.959e-05}
+
 
 while True:
     for coin in config['coins']:
@@ -73,6 +75,22 @@ while True:
         coin_jpy_ticker = ticker_xem_jpy
         coin_btc_ticker = ticker_xem_btc
 
+# board value
+        sum_btc_jpy_asks  =  btc_jpy_depth["asks"][0][0] *  btc_jpy_depth["asks"][0][1]  ##jpy
+        sum_coin_btc_asks = coin_btc_depth["asks"][0][0] * coin_btc_depth["asks"][0][1]  ##btc
+        sum_coin_btc_asks_jpy = sum_coin_btc_asks * btc_jpy_depth["bids"][0][0]          ##btc->jpy
+        sum_coin_jpy_asks = coin_jpy_depth["asks"][0][0] * coin_jpy_depth["asks"][0][1]  ##jpy
+        sum_btc_jpy_bids  =  btc_jpy_depth["bids"][0][0] *  btc_jpy_depth["bids"][0][1]  ##jpy
+        sum_coin_btc_bids = coin_btc_depth["bids"][0][0] * coin_btc_depth["bids"][0][1]  ##btc
+        sum_coin_btc_bids_jpy = sum_coin_btc_bids * btc_jpy_depth["bids"][0][0]          ##btc->jpy
+        sum_coin_jpy_bids = coin_jpy_depth["bids"][0][0] * coin_jpy_depth["bids"][0][1]  ##jpy
+
+#bet money
+        min_depth = int(min( sum_btc_jpy_asks, sum_coin_btc_asks_jpy, sum_coin_jpy_asks, sum_btc_jpy_bids, sum_coin_btc_bids_jpy, sum_coin_jpy_bids ))
+        bet = int(min(money,min_depth)*0.5)
+        # bet = 10000
+        print('min_depth:{0} money:{1} bet:{2}'.format(min_depth,money,bet))
+
         print( 'aux :btc_jpy{0} coin_jpy{1} coin_btc{2}'.format( btc_jpy_pairs_aux_step ,coin_jpy_pairs_aux_step , coin_btc_pairs_aux_step))
         print( 'item:btc_jpy{0} coin_jpy{1} coin_btc{2}'.format( btc_jpy_pairs_item_step,coin_jpy_pairs_item_step,coin_btc_pairs_item_step))
 
@@ -86,65 +104,81 @@ while True:
 
 ##jpy>btc>alt>jpy)    btc/jpy(ask)>alt/btc(ask)>alt/jpy(bid)
         ## btc/jpy <
-        amount = int( money / btc_jpy_ticker['ask'] / btc_jpy_pairs_item_step ) * btc_jpy_pairs_item_step
-        pay    = amount * btc_jpy_ticker['ask']
+#       amount = int( bet / btc_jpy_ticker['ask'] / btc_jpy_pairs_item_step ) * btc_jpy_pairs_item_step
+        amount = int( bet / btc_jpy_depth["asks"][0][0] / btc_jpy_pairs_item_step ) * btc_jpy_pairs_item_step
+        amount = round(amount,8)
+#       pay    = amount * btc_jpy_ticker['ask']
+        pay    = amount * btc_jpy_depth["asks"][0][0]
         commission = amount * (config.getfloat('coins', 'btc' ))/100
         print  ('jpy>btc in(btc):{0:10} out(jpy):{1:10} commission:{2:10} '.format( str(amount) , str(pay) , str(commission) ))
         jb     = round(amount - commission,8)  ##BTC
 
         ## xem/btc < 
-        amount = int(    jb / coin_btc_ticker['ask'] / coin_btc_pairs_item_step ) * coin_btc_pairs_item_step
-        pay   = amount * coin_btc_ticker['ask']
+#       amount = int(    jb / coin_btc_ticker['ask'] / coin_btc_pairs_item_step ) * coin_btc_pairs_item_step
+        amount = int(    jb / coin_btc_depth['asks'][0][0] / coin_btc_pairs_item_step ) * coin_btc_pairs_item_step
+        amount = round(amount,8)
+#       pay   = amount * coin_btc_ticker['ask']
+        pay   = amount * coin_btc_depth['asks'][0][0]
         commission = amount * (config.getfloat('coins', coin ))/100
         print  ('btc>alt in(alt):{0:10} out(btc):{1:10} commission:{2:10} '.format( str(amount) , str(pay) , str(commission) ))
         jba    = round(amount - commission,8)  ##ALT
 
         ## xem/btc < 
         pay    = int(   jba / coin_jpy_pairs_item_step ) * coin_jpy_pairs_item_step
-        amount = pay * coin_jpy_ticker['bid']
+#       amount = pay * coin_jpy_ticker['bid']
+        amount = pay * coin_jpy_depth['bids'][0][0]
         amount = round(amount,8)
         commission = amount * (config.getfloat('coins', coin ))/100
         print  ('alt>jpy in(jpy):{0:10} out(alt):{1:10} commission:{2:10} '.format( str(amount) , str(pay) , str(commission) ))
         jbaj   = round(amount - commission,8)
 
-        Profits_jbaj = (jbaj/money)*100
-        print( '{0}jpy > {1}btc > {2}alt > {3}jpy : result {4}%'.format(money,jb,jba,jbaj, Profits_jbaj ))
+        Profits_jbaj = (jbaj/bet)*100
+        print( '{0}jpy > {1}btc > {2}alt > {3}jpy : result {4}%'.format(bet,jb,jba,jbaj, Profits_jbaj ))
         
 ##jpy>alt>btc>jpy    btc/jpy(bid)<alt/btc(bid)<alt/jpy(ask)
         ## xem/jpy <
-        amount = int( money / coin_jpy_ticker['ask'] / coin_jpy_pairs_item_step) * coin_jpy_pairs_item_step
-        pay   = amount * coin_jpy_ticker['ask']
+#       amount = int( bet / coin_jpy_ticker['ask'] / coin_jpy_pairs_item_step) * coin_jpy_pairs_item_step
+        amount = int( bet / coin_jpy_depth['asks'][0][0] / coin_jpy_pairs_item_step) * coin_jpy_pairs_item_step
+        amount = round(amount,8)
+#       pay   = amount * coin_jpy_ticker['ask']
+        pay   = amount * coin_jpy_depth['asks'][0][0]
         commission = amount * config.getfloat('coins', coin ) /100
         print  ('jpy>alt in(alt):{0:10} out(jpy):{1:10} commission:{2:10} '.format( str(amount) , str(pay) , str(commission) ))
         ja     = round(amount - commission,8)
 
         ## xem/btc >
         pay   =  int( ja / coin_btc_pairs_item_step ) * coin_btc_pairs_item_step
-        amount = pay * coin_btc_ticker['bid']
+#       amount = pay * coin_btc_ticker['bid']
+        amount = pay * coin_btc_depth['bids'][0][0]
+        amount = round(amount,8)
         commission = amount * config.getfloat('coins', coin ) /100
         print  ('alt>btc in(btc):{0:10} out(alt):{1:10} commission:{2:10} '.format( str(amount) , str(pay) , str(commission) ))
         jab    = round(amount - commission,8)
 
         ## btc/jpy >
         pay    = int( jab / btc_jpy_pairs_item_step ) * btc_jpy_pairs_item_step
-        amount = pay *  btc_jpy_ticker['bid']
+#       amount = pay *  btc_jpy_ticker['bid']
+        amount = pay *  btc_jpy_depth['bids'][0][0]
+        amount = round(amount,8)
         commission = amount * config.getfloat('coins', 'btc' ) /100
         print  ('btc>jpy in(jpy):{0:10} out(btc):{1:10} commission:{2:10} '.format( str(amount) , str(pay) , str(commission) ))
         jabj   = round(amount - commission,8)
 
-        Profits_jabj = (jabj/money)*100
-        print( '{0}jpy > {1}alt > {2}btc > {3}jpy : result {4}%'.format(money,ja,jab,jabj, Profits_jabj ))
+        Profits_jabj = (jabj/bet)*100
+        print( '{0}jpy > {1}alt > {2}btc > {3}jpy : result {4}%'.format(bet,ja,jab,jabj, Profits_jabj ))
 
         if Profits_jbaj > 100.5:
             print( '{0} {1}'.format(coin, time.ctime()) )
             print( '{0:>15}_bid {0:>15}_ask {1:>15}_bid {1:>15}_ask {2:>15}_bid {2:>15}_ask '.format('btc_jpy',coin_jpy,coin_btc))
-            print( '    {0:>15}     {1:>15}     {2:>15}     {3:>15}     {4:>15}     {5:>15} '.format(btc_jpy_ticker['bid'],btc_jpy_ticker['ask'],coin_jpy_ticker['bid'],coin_jpy_ticker['ask'],coin_btc_ticker['bid'],coin_btc_ticker['ask']))
+#            print( '    {0:>15}     {1:>15}     {2:>15}     {3:>15}     {4:>15}     {5:>15} '.format(btc_jpy_ticker['bid'],btc_jpy_ticker['ask'],coin_jpy_ticker['bid'],coin_jpy_ticker['ask'],coin_btc_ticker['bid'],coin_btc_ticker['ask']))
+            print( '    {0:>15}     {1:>15}     {2:>15}     {3:>15}     {4:>15}     {5:>15} '.format(btc_jpy_depth['bids'][0][0],btc_jpy_depth['asks'][0][0],coin_jpy_depth['bids'][0][0],coin_jpy_depth['asks'][0][0],coin_btc_depth['bids'][0][0],coin_btc_depth['asks'][0][0]))
             print( '{0}jpy > {1}btc > {2}alt > {3}jpy : result {4}%'.format(money,jb,jba,jbaj, Profits_jbaj ))
  
         if Profits_jabj > 100.5:
             print( '{0} {1}'.format(coin, time.ctime()) )
             print( '{0:>15}_bid {0:>15}_ask {1:>15}_bid {1:>15}_ask {2:>15}_bid {2:>15}_ask '.format('btc_jpy',coin_jpy,coin_btc))
-            print( '    {0:>15}     {1:>15}     {2:>15}     {3:>15}     {4:>15}     {5:>15} '.format(btc_jpy_ticker['bid'],btc_jpy_ticker['ask'],coin_jpy_ticker['bid'],coin_jpy_ticker['ask'],coin_btc_ticker['bid'],coin_btc_ticker['ask']))
+#           print( '    {0:>15}     {1:>15}     {2:>15}     {3:>15}     {4:>15}     {5:>15} '.format(btc_jpy_ticker['bid'],btc_jpy_ticker['ask'],coin_jpy_ticker['bid'],coin_jpy_ticker['ask'],coin_btc_ticker['bid'],coin_btc_ticker['ask']))
+            print( '    {0:>15}     {1:>15}     {2:>15}     {3:>15}     {4:>15}     {5:>15} '.format(btc_jpy_depth['bids'][0][0],btc_jpy_depth['asks'][0][0],coin_jpy_depth['bids'][0][0],coin_jpy_depth['asks'][0][0],coin_btc_depth['bids'][0][0],coin_btc_depth['asks'][0][0]))
             print( '{0}jpy > {1}alt > {2}btc > {3}jpy : result {4}%'.format(money,ja,jab,jabj, Profits_jabj ))
         time.sleep(1)
 
